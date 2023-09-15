@@ -39,6 +39,7 @@ func getApiRouterV1(config *api.ApiConfig) *chi.Mux {
 	apiRouter.Get(readyEndpoint, api.Ready)
 	apiRouter.Get(errEndpoint, api.Err)
 	apiRouter.Post(usersEndpoint, config.CreateUser)
+	apiRouter.Get(usersEndpoint, config.GetUser)
 
 	return apiRouter
 }
