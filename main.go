@@ -1,24 +1,44 @@
 package main
 
+// Import Postgres driver w/ side effects
 import (
+	"database/sql"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
 	"github.com/ajpotts01/go-blog-aggregator/api"
+	"github.com/ajpotts01/go-blog-aggregator/internal/database"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/cors"
 	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
-func getApiRouterV1() *chi.Mux {
+func getApiConfig(dbConnStr string) (*api.ApiConfig, error) {
+	db, err := sql.Open("postgres", dbConnStr)
+
+	if err != nil {
+		return &api.ApiConfig{}, err
+	}
+
+	dbq := database.New(db)
+
+	return &api.ApiConfig{
+		DbConn: dbq,
+	}, nil
+}
+
+func getApiRouterV1(config *api.ApiConfig) *chi.Mux {
 	const errEndpoint = "/err"
 	const readyEndpoint = "/readiness"
+	const usersEndpoint = "/users"
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Get(readyEndpoint, api.Ready)
 	apiRouter.Get(errEndpoint, api.Err)
+	apiRouter.Post(usersEndpoint, config.CreateUser)
 
 	return apiRouter
 }
@@ -26,7 +46,16 @@ func getApiRouterV1() *chi.Mux {
 func main() {
 	godotenv.Load()
 	port := os.Getenv("PORT")
-	fmt.Println(port)
+	dbConnStr := os.Getenv("PG_CONN")
+
+	// Database
+	apiConfig, err := getApiConfig(dbConnStr)
+
+	fmt.Printf("API config: %v", apiConfig)
+
+	if err != nil {
+		log.Fatalf("Error setting up database: %v", err)
+	}
 
 	// App router
 	appRouter := chi.NewRouter()
@@ -39,7 +68,7 @@ func main() {
 	}
 	appRouter.Use(cors.Handler(corsOptions))
 
-	appRouter.Mount("/v1", getApiRouterV1())
+	appRouter.Mount("/v1", getApiRouterV1(apiConfig))
 
 	server := &http.Server{
 		Addr:    ":" + port,
