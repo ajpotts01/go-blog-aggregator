@@ -34,12 +34,14 @@ func getApiRouterV1(config *api.ApiConfig) *chi.Mux {
 	const errEndpoint = "/err"
 	const readyEndpoint = "/readiness"
 	const usersEndpoint = "/users"
+	const feedsEndpoint = "/feeds"
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Get(readyEndpoint, api.Ready)
 	apiRouter.Get(errEndpoint, api.Err)
 	apiRouter.Post(usersEndpoint, config.CreateUser)
-	apiRouter.Get(usersEndpoint, config.GetUser)
+	apiRouter.Get(usersEndpoint, config.AuthMiddleware(config.GetUser))
+	apiRouter.Post(feedsEndpoint, config.AuthMiddleware(config.CreateFeed))
 
 	return apiRouter
 }

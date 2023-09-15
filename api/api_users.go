@@ -3,10 +3,8 @@ package api
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/ajpotts01/go-blog-aggregator/internal/database"
@@ -87,23 +85,23 @@ func (config *ApiConfig) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 // GET /api/users
-func (config *ApiConfig) GetUser(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
+func (config *ApiConfig) GetUser(w http.ResponseWriter, r *http.Request, usr database.User) {
+	//w.Header().Set("Content-Type", "application/json")
 
 	// No body expected: just API key header
-	key, err := config.getAuthFromHeader(r, "ApiKey")
-	if err != nil {
-		errorResponse(w, http.StatusUnauthorized, "Bad authorization header")
-		return
-	}
+	// key, err := config.getAuthFromHeader(r, "ApiKey")
+	// if err != nil {
+	// 	errorResponse(w, http.StatusUnauthorized, "Bad authorization header")
+	// 	return
+	// }
 
-	log.Printf("Received API key: %v", key)
-	usr, err := config.DbConn.GetUserByApiKey(context.TODO(), key)
+	// log.Printf("Received API key: %v", key)
+	// usr, err := config.DbConn.GetUserByApiKey(context.TODO(), key)
 
-	if err != nil {
-		errorResponse(w, http.StatusUnauthorized, "Bad API key")
-		return
-	}
+	// if err != nil {
+	// 	errorResponse(w, http.StatusUnauthorized, "Bad API key")
+	// 	return
+	// }
 
 	validResponse(w, http.StatusOK, userResponse{
 		ID:        usr.ID,
@@ -112,16 +110,4 @@ func (config *ApiConfig) GetUser(w http.ResponseWriter, r *http.Request) {
 		Name:      usr.Name,
 		ApiKey:    usr.ApiKey,
 	})
-}
-
-func (config *ApiConfig) getAuthFromHeader(r *http.Request, tokenType string) (string, error) {
-	authHeader := r.Header.Get("Authorization")
-
-	if authHeader == "" {
-		return "", errors.New("must supply authorization header")
-	}
-
-	suppliedItem := strings.Replace(authHeader, tokenType, "", 1)
-	suppliedItem = strings.Trim(suppliedItem, " ")
-	return suppliedItem, nil
 }
