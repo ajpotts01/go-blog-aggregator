@@ -25,6 +25,10 @@ type feedResponse struct {
 	UserId    uuid.UUID `json:"user_id"`
 }
 
+type feedList struct {
+	Feeds []feedResponse `json:"feeds"`
+}
+
 func createFeedParams(name string, url string, userId uuid.UUID) (database.CreateFeedParams, error) {
 	newId, err := uuid.NewUUID()
 
@@ -83,5 +87,32 @@ func (config *ApiConfig) CreateFeed(w http.ResponseWriter, r *http.Request, user
 		Url:       newFeed.Url,
 		UserId:    newFeed.UserID,
 	})
+	return
+}
+
+// GET /api/feeds
+func (config *ApiConfig) GetFeeds(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "application/json")
+
+	feeds, err := config.DbConn.GetFeeds(context.TODO())
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Error retrieving feeds")
+		return
+	}
+
+	var returnedFeeds []feedResponse
+
+	for _, feed := range feeds {
+		returnedFeeds = append(returnedFeeds, feedResponse{
+			Id:        feed.ID,
+			CreatedAt: feed.CreatedAt,
+			UpdatedAt: feed.UpdatedAt,
+			Name:      feed.Name,
+			Url:       feed.Url,
+			UserId:    feed.UserID,
+		})
+	}
+
+	validResponse(w, http.StatusOK, returnedFeeds)
 	return
 }
