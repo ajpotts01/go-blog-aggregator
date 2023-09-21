@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ajpotts01/go-blog-aggregator/internal/database"
+	"github.com/go-chi/chi/v5"
 	"github.com/google/uuid"
 )
 
@@ -82,6 +83,15 @@ func createFeedParams(name string, url string, userId uuid.UUID) (database.Creat
 	return params, nil
 }
 
+func unfollowParams(followId uuid.UUID, userId uuid.UUID) database.DeleteFollowParams {
+	params := database.DeleteFollowParams{
+		ID:     followId,
+		UserID: userId,
+	}
+
+	return params
+}
+
 // POST /api/feeds
 func (config *ApiConfig) CreateFeed(w http.ResponseWriter, r *http.Request, user database.User) {
 	decoder := json.NewDecoder(r.Body)
@@ -149,7 +159,7 @@ func (config *ApiConfig) GetFeeds(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
-// POST /api/feed_follows
+// POST /api/follows
 func (config *ApiConfig) FollowFeed(w http.ResponseWriter, r *http.Request, user database.User) {
 	decoder := json.NewDecoder(r.Body)
 	requestParams := followFeedRequest{}
@@ -185,5 +195,32 @@ func (config *ApiConfig) FollowFeed(w http.ResponseWriter, r *http.Request, user
 		FeedId:    newFollow.FeedID,
 		UserId:    newFollow.UserID,
 	})
+	return
+}
+
+// DELETE /api/follows/{id}
+func (config *ApiConfig) UnfollowFeed(w http.ResponseWriter, r *http.Request, user database.User) {
+	providedId := chi.URLParam(r, "id")
+	followId, err := uuid.Parse(providedId)
+
+	if err != nil {
+		log.Printf("Error decoding parameters: %s", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	dbUnfollowParams := unfollowParams(followId, user.ID)
+
+	log.Printf("Deleting: Follow %v owned by %v", followId, user.ID)
+	err = config.DbConn.DeleteFollow(context.TODO(), dbUnfollowParams)
+
+	if err != nil {
+		log.Printf("Error deleting existing follow: %v", err)
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 	return
 }

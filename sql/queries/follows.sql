@@ -12,3 +12,11 @@ WHERE
     user_id = $1
 ORDER BY 
     created_at DESC;
+
+-- name: DeleteFollow :exec
+DELETE
+FROM
+    follows
+WHERE
+    id = $1
+    AND user_id = $2; -- so other users can't delete each other's stuff
