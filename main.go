@@ -35,6 +35,8 @@ func getApiRouterV1(config *api.ApiConfig) *chi.Mux {
 	const readyEndpoint = "/readiness"
 	const usersEndpoint = "/users"
 	const feedsEndpoint = "/feeds"
+	const followsEndpoint = "/follows"
+	const singleFollowEndpoint = "/follows/{id}"
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Get(readyEndpoint, api.Ready)
@@ -43,6 +45,9 @@ func getApiRouterV1(config *api.ApiConfig) *chi.Mux {
 	apiRouter.Get(usersEndpoint, config.AuthMiddleware(config.GetUser))
 	apiRouter.Post(feedsEndpoint, config.AuthMiddleware(config.CreateFeed))
 	apiRouter.Get(feedsEndpoint, config.GetFeeds)
+	apiRouter.Post(followsEndpoint, config.AuthMiddleware(config.FollowFeed))
+	apiRouter.Get(followsEndpoint, config.AuthMiddleware(config.GetFollows))
+	apiRouter.Delete(singleFollowEndpoint, config.AuthMiddleware(config.UnfollowFeed))
 
 	return apiRouter
 }

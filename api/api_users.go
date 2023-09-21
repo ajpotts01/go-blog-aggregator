@@ -86,23 +86,6 @@ func (config *ApiConfig) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 // GET /api/users
 func (config *ApiConfig) GetUser(w http.ResponseWriter, r *http.Request, usr database.User) {
-	//w.Header().Set("Content-Type", "application/json")
-
-	// No body expected: just API key header
-	// key, err := config.getAuthFromHeader(r, "ApiKey")
-	// if err != nil {
-	// 	errorResponse(w, http.StatusUnauthorized, "Bad authorization header")
-	// 	return
-	// }
-
-	// log.Printf("Received API key: %v", key)
-	// usr, err := config.DbConn.GetUserByApiKey(context.TODO(), key)
-
-	// if err != nil {
-	// 	errorResponse(w, http.StatusUnauthorized, "Bad API key")
-	// 	return
-	// }
-
 	validResponse(w, http.StatusOK, userResponse{
 		ID:        usr.ID,
 		CreatedAt: usr.CreatedAt,
@@ -110,4 +93,6 @@ func (config *ApiConfig) GetUser(w http.ResponseWriter, r *http.Request, usr dat
 		Name:      usr.Name,
 		ApiKey:    usr.ApiKey,
 	})
+
+	return
 }
