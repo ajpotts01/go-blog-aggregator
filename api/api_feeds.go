@@ -38,8 +38,33 @@ type followResponse struct {
 	FeedId    uuid.UUID `json:"feed_id"`
 }
 
+type newFeedResponse struct {
+	Feed   feedResponse   `json:"feed"`
+	Follow followResponse `json:"follow"`
+}
+
 type feedList struct {
 	Feeds []feedResponse `json:"feeds"`
+}
+
+func createNewFeedResponse(feed database.Feed, follow database.Follow) newFeedResponse {
+	return newFeedResponse{
+		Feed: feedResponse{
+			Id:        feed.ID,
+			UserId:    feed.UserID,
+			CreatedAt: feed.CreatedAt,
+			UpdatedAt: feed.UpdatedAt,
+			Name:      feed.Name,
+			Url:       feed.Url,
+		},
+		Follow: followResponse{
+			Id:        follow.ID,
+			UserId:    follow.UserID,
+			FeedId:    follow.FeedID,
+			CreatedAt: follow.CreatedAt,
+			UpdatedAt: follow.UpdatedAt,
+		},
+	}
 }
 
 func createFollowParams(userId uuid.UUID, feedId uuid.UUID) (database.CreateFollowParams, error) {
@@ -121,14 +146,25 @@ func (config *ApiConfig) CreateFeed(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	validResponse(w, http.StatusCreated, feedResponse{
-		Id:        newFeed.ID,
-		CreatedAt: newFeed.CreatedAt,
-		UpdatedAt: newFeed.UpdatedAt,
-		Name:      newFeed.Name,
-		Url:       newFeed.Url,
-		UserId:    newFeed.UserID,
-	})
+	dbFollowParams, err := createFollowParams(user.ID, newFeed.ID)
+
+	if err != nil {
+		log.Printf("Error creating new follow params: %v", err)
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	newFollow, err := config.DbConn.CreateFollow(context.TODO(), dbFollowParams)
+
+	if err != nil {
+		log.Printf("Error creating new follow: %v", err)
+		errorResponse(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	responses := createNewFeedResponse(newFeed, newFollow)
+
+	validResponse(w, http.StatusCreated, responses)
 	return
 }
 
@@ -222,5 +258,31 @@ func (config *ApiConfig) UnfollowFeed(w http.ResponseWriter, r *http.Request, us
 	}
 
 	w.WriteHeader(http.StatusOK)
+	return
+}
+
+// GET /api/follows
+func (config *ApiConfig) GetFollows(w http.ResponseWriter, r *http.Request, user database.User) {
+	w.Header().Set("Content-Type", "application/json")
+
+	follows, err := config.DbConn.GetFollows(context.TODO(), user.ID)
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Error retrieving follows")
+		return
+	}
+
+	var returnedFollows []followResponse
+
+	for _, follow := range follows {
+		returnedFollows = append(returnedFollows, followResponse{
+			Id:        follow.ID,
+			CreatedAt: follow.CreatedAt,
+			UpdatedAt: follow.UpdatedAt,
+			UserId:    follow.UserID,
+			FeedId:    follow.FeedID,
+		})
+	}
+
+	validResponse(w, http.StatusOK, returnedFollows)
 	return
 }

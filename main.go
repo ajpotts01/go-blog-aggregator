@@ -46,6 +46,7 @@ func getApiRouterV1(config *api.ApiConfig) *chi.Mux {
 	apiRouter.Post(feedsEndpoint, config.AuthMiddleware(config.CreateFeed))
 	apiRouter.Get(feedsEndpoint, config.GetFeeds)
 	apiRouter.Post(followsEndpoint, config.AuthMiddleware(config.FollowFeed))
+	apiRouter.Get(followsEndpoint, config.AuthMiddleware(config.GetFollows))
 	apiRouter.Delete(singleFollowEndpoint, config.AuthMiddleware(config.UnfollowFeed))
 
 	return apiRouter
