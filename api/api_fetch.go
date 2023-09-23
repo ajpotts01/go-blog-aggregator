@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 // RSS feeds are always XML spec
@@ -109,16 +111,17 @@ func (config *ApiConfig) FetchLoop() {
 
 		for _, feed := range feeds {
 			urlPool.Add(1)
-			go func(url string) {
+			go func(url string, id uuid.UUID) {
 				defer urlPool.Done()
 				log.Printf("Fetching from %s", url)
 				rss, err := config.fetchFeed(url)
+				config.DbConn.MarkFeedFetched(context.TODO(), id)
 				if err != nil {
 					log.Printf("Error: failed to retrieve items from feed %s: %v", url, err)
 					return
 				}
 				config.processFeed(rss)
-			}(feed.Url)
+			}(feed.Url, feed.ID)
 		}
 		log.Printf("Waiting for fetching to end...")
 		urlPool.Wait()
