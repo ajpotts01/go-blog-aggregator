@@ -84,6 +84,29 @@ func main() {
 		Handler: appRouter,
 	}
 
+	// url := "https://blog.boot.dev/index.xml"
+	// altUrl := "https://wagslane.dev/index.xml"
+	// log.Printf("URL: %v", url)
+	// log.Printf("Alt URL: %v", url)
+	// log.Printf("Using alt URL")
+	//feed, err := apiConfig.FetchFeed(altUrl)
+
+	// if err != nil {
+	// 	log.Printf("Error getting feed: %v", err)
+	// }
+
+	// for _, c := range feed.Channels {
+	// 	log.Printf("Channel Link: %v", c.Link)
+	// 	//log.Printf("Atom: %v", c.AtomLink)
+	// 	log.Printf("Items:")
+	// 	for _, i := range c.Items {
+	// 		log.Printf("Title: %v", i.Title)
+	// 		log.Printf("Desc: %v", i.Description)
+	// 		log.Printf("Publish Date: %v", i.PubDate)
+	// 		log.Printf("Link: %v", i.Link)
+	// 	}
+	// }
+
 	log.Printf("Now serving on port: %v", port)
 	log.Fatal(server.ListenAndServe())
 }
