@@ -22,12 +22,13 @@ type followFeedRequest struct {
 }
 
 type feedResponse struct {
-	Id        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Name      string    `json:"name"`
-	Url       string    `json:"url"`
-	UserId    uuid.UUID `json:"user_id"`
+	Id            uuid.UUID  `json:"id"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	LastFetchedAt *time.Time `json:"last_fetched_at"`
+	Name          string     `json:"name"`
+	Url           string     `json:"url"`
+	UserId        uuid.UUID  `json:"user_id"`
 }
 
 type followResponse struct {
@@ -50,12 +51,13 @@ type feedList struct {
 func createNewFeedResponse(feed database.Feed, follow database.Follow) newFeedResponse {
 	return newFeedResponse{
 		Feed: feedResponse{
-			Id:        feed.ID,
-			UserId:    feed.UserID,
-			CreatedAt: feed.CreatedAt,
-			UpdatedAt: feed.UpdatedAt,
-			Name:      feed.Name,
-			Url:       feed.Url,
+			Id:            feed.ID,
+			UserId:        feed.UserID,
+			CreatedAt:     feed.CreatedAt,
+			UpdatedAt:     feed.UpdatedAt,
+			LastFetchedAt: &feed.LastFetchedAt.Time,
+			Name:          feed.Name,
+			Url:           feed.Url,
 		},
 		Follow: followResponse{
 			Id:        follow.ID,
@@ -182,12 +184,13 @@ func (config *ApiConfig) GetFeeds(w http.ResponseWriter, r *http.Request) {
 
 	for _, feed := range feeds {
 		returnedFeeds = append(returnedFeeds, feedResponse{
-			Id:        feed.ID,
-			CreatedAt: feed.CreatedAt,
-			UpdatedAt: feed.UpdatedAt,
-			Name:      feed.Name,
-			Url:       feed.Url,
-			UserId:    feed.UserID,
+			Id:            feed.ID,
+			CreatedAt:     feed.CreatedAt,
+			UpdatedAt:     feed.UpdatedAt,
+			LastFetchedAt: &feed.LastFetchedAt.Time,
+			Name:          feed.Name,
+			Url:           feed.Url,
+			UserId:        feed.UserID,
 		})
 	}
 
