@@ -1,10 +1,13 @@
 package api
 
 import (
+	"context"
 	"encoding/xml"
 	"io"
 	"log"
 	"net/http"
+	"sync"
+	"time"
 )
 
 // RSS feeds are always XML spec
@@ -41,7 +44,7 @@ type rss struct {
 	Channels []rssChannel `xml:"channel"`
 }
 
-func (config *ApiConfig) FetchFeed(url string) (*rss, error) {
+func (config *ApiConfig) fetchFeed(url string) (*rss, error) {
 	var rawData []byte
 	var feed *rss
 
@@ -73,4 +76,51 @@ func (config *ApiConfig) FetchFeed(url string) (*rss, error) {
 	// test := string(rawData[:])
 	// log.Printf(test)
 	return feed, nil
+}
+
+func (config *ApiConfig) processFeed(feed *rss) {
+	for _, c := range feed.Channels {
+		log.Printf("Processed feed: %v", c.Title)
+	}
+}
+
+func (config *ApiConfig) FetchLoop() {
+	loopTimer := 60 * time.Second
+	ticker := time.NewTicker(loopTimer)
+
+	log.Printf("Init fetch loop")
+
+	for {
+		var urlPool sync.WaitGroup
+		// Block until a signal is received from the ticker
+		<-ticker.C
+
+		log.Printf("Fetch loop running...")
+		// Want to grab up to X feeds at once.
+		// This is configured in config.MaxNumProcessed
+		feeds, err := config.DbConn.GetNextFeedsToFetch(context.TODO(), int32(config.MaxFeedsProcessed))
+
+		if err != nil {
+			log.Printf("Error: failed to retrieve feeds to fetch: %v", err)
+			continue
+		}
+
+		log.Printf("Got %v feeds", len(feeds))
+
+		for _, feed := range feeds {
+			urlPool.Add(1)
+			go func(url string) {
+				defer urlPool.Done()
+				log.Printf("Fetching from %s", url)
+				rss, err := config.fetchFeed(url)
+				if err != nil {
+					log.Printf("Error: failed to retrieve items from feed %s: %v", url, err)
+					return
+				}
+				config.processFeed(rss)
+			}(feed.Url)
+		}
+		log.Printf("Waiting for fetching to end...")
+		urlPool.Wait()
+	}
 }

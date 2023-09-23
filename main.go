@@ -26,7 +26,8 @@ func getApiConfig(dbConnStr string) (*api.ApiConfig, error) {
 	dbq := database.New(db)
 
 	return &api.ApiConfig{
-		DbConn: dbq,
+		DbConn:            dbq,
+		MaxFeedsProcessed: 5,
 	}, nil
 }
 
@@ -106,6 +107,8 @@ func main() {
 	// 		log.Printf("Link: %v", i.Link)
 	// 	}
 	// }
+
+	go apiConfig.FetchLoop()
 
 	log.Printf("Now serving on port: %v", port)
 	log.Fatal(server.ListenAndServe())
