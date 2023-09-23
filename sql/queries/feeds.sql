@@ -15,3 +15,12 @@ FROM
 ORDER BY
     last_fetched_at NULLS FIRST
 LIMIT $1;
+
+-- name: MarkFeedFetched :exec
+UPDATE
+    feeds
+SET
+    last_fetched_at = now()::timestamp(0),
+    updated_at = now()::timestamp(0)
+WHERE
+    id = $1;

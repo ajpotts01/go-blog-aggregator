@@ -128,3 +128,18 @@ func (q *Queries) GetNextFeedsToFetch(ctx context.Context, limit int32) ([]Feed,
 	}
 	return items, nil
 }
+
+const markFeedFetched = `-- name: MarkFeedFetched :exec
+UPDATE
+    feeds
+SET
+    last_fetched_at = now()::timestamp(0),
+    updated_at = now()::timestamp(0)
+WHERE
+    id = $1
+`
+
+func (q *Queries) MarkFeedFetched(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, markFeedFetched, id)
+	return err
+}
