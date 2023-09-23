@@ -48,24 +48,32 @@ type feedList struct {
 	Feeds []feedResponse `json:"feeds"`
 }
 
+func mapFeedResponse(feed database.Feed) feedResponse {
+	return feedResponse{
+		Id:            feed.ID,
+		UserId:        feed.UserID,
+		CreatedAt:     feed.CreatedAt,
+		UpdatedAt:     feed.UpdatedAt,
+		LastFetchedAt: &feed.LastFetchedAt.Time,
+		Name:          feed.Name,
+		Url:           feed.Url,
+	}
+}
+
+func mapFollowResponse(follow database.Follow) followResponse {
+	return followResponse{
+		Id:        follow.ID,
+		UserId:    follow.UserID,
+		FeedId:    follow.FeedID,
+		CreatedAt: follow.CreatedAt,
+		UpdatedAt: follow.UpdatedAt,
+	}
+}
+
 func createNewFeedResponse(feed database.Feed, follow database.Follow) newFeedResponse {
 	return newFeedResponse{
-		Feed: feedResponse{
-			Id:            feed.ID,
-			UserId:        feed.UserID,
-			CreatedAt:     feed.CreatedAt,
-			UpdatedAt:     feed.UpdatedAt,
-			LastFetchedAt: &feed.LastFetchedAt.Time,
-			Name:          feed.Name,
-			Url:           feed.Url,
-		},
-		Follow: followResponse{
-			Id:        follow.ID,
-			UserId:    follow.UserID,
-			FeedId:    follow.FeedID,
-			CreatedAt: follow.CreatedAt,
-			UpdatedAt: follow.UpdatedAt,
-		},
+		Feed:   mapFeedResponse(feed),
+		Follow: mapFollowResponse(follow),
 	}
 }
 
@@ -183,15 +191,7 @@ func (config *ApiConfig) GetFeeds(w http.ResponseWriter, r *http.Request) {
 	var returnedFeeds []feedResponse
 
 	for _, feed := range feeds {
-		returnedFeeds = append(returnedFeeds, feedResponse{
-			Id:            feed.ID,
-			CreatedAt:     feed.CreatedAt,
-			UpdatedAt:     feed.UpdatedAt,
-			LastFetchedAt: &feed.LastFetchedAt.Time,
-			Name:          feed.Name,
-			Url:           feed.Url,
-			UserId:        feed.UserID,
-		})
+		returnedFeeds = append(returnedFeeds, mapFeedResponse(feed))
 	}
 
 	validResponse(w, http.StatusOK, returnedFeeds)
@@ -227,13 +227,7 @@ func (config *ApiConfig) FollowFeed(w http.ResponseWriter, r *http.Request, user
 		return
 	}
 
-	validResponse(w, http.StatusCreated, followResponse{
-		Id:        newFollow.ID,
-		CreatedAt: newFollow.CreatedAt,
-		UpdatedAt: newFollow.UpdatedAt,
-		FeedId:    newFollow.FeedID,
-		UserId:    newFollow.UserID,
-	})
+	validResponse(w, http.StatusCreated, mapFollowResponse(newFollow))
 	return
 }
 
@@ -277,13 +271,7 @@ func (config *ApiConfig) GetFollows(w http.ResponseWriter, r *http.Request, user
 	var returnedFollows []followResponse
 
 	for _, follow := range follows {
-		returnedFollows = append(returnedFollows, followResponse{
-			Id:        follow.ID,
-			CreatedAt: follow.CreatedAt,
-			UpdatedAt: follow.UpdatedAt,
-			UserId:    follow.UserID,
-			FeedId:    follow.FeedID,
-		})
+		returnedFollows = append(returnedFollows, mapFollowResponse(follow))
 	}
 
 	validResponse(w, http.StatusOK, returnedFollows)
