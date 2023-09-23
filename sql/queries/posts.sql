@@ -24,4 +24,6 @@ FROM
 WHERE
     FW.user_id = $1
 ORDER BY
-    published_at DESC;
+    published_at DESC
+LIMIT
+    $2;
