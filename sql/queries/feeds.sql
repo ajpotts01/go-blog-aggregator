@@ -6,3 +6,12 @@ RETURNING *;
 -- name: GetFeeds :many
 SELECT * FROM feeds
 ORDER BY created_at DESC;
+
+-- name: GetNextFeedsToFetch :many
+SELECT
+    *
+FROM
+    feeds
+ORDER BY
+    last_fetched_at NULLS FIRST
+LIMIT $1;
