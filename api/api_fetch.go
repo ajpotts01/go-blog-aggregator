@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/xml"
 	"io"
 	"log"
@@ -9,7 +10,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ajpotts01/go-blog-aggregator/internal/database"
 	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // RSS feeds are always XML spec
@@ -46,6 +49,42 @@ type rss struct {
 	Channels []rssChannel `xml:"channel"`
 }
 
+func createPostParams(post rssItem, feedId uuid.UUID) (database.CreatePostParams, error) {
+	newId, err := uuid.NewUUID()
+
+	if err != nil {
+		return database.CreatePostParams{}, err
+	}
+
+	createdAt := time.Now()
+
+	// Times of all sampled feeds appear to conform to RFC1123Z standard
+	// this is despite the RSS spec saying RFC822...
+	// ...supported by examples that aren't RFC822. Nice one.
+	publishedAt, err := time.Parse(time.RFC1123Z, post.PubDate)
+
+	if err != nil {
+		return database.CreatePostParams{}, err
+	}
+
+	params := database.CreatePostParams{
+		ID:        newId,
+		CreatedAt: createdAt,
+		UpdatedAt: createdAt,
+		Title:     post.Title,
+		PublishedAt: sql.NullTime{
+			Time: publishedAt,
+		},
+		Description: sql.NullString{
+			String: post.Description,
+		},
+		FeedID: feedId,
+		Url:    post.Link,
+	}
+
+	return params, nil
+}
+
 func (config *ApiConfig) fetchFeed(url string) (*rss, error) {
 	var rawData []byte
 	var feed *rss
@@ -80,10 +119,33 @@ func (config *ApiConfig) fetchFeed(url string) (*rss, error) {
 	return feed, nil
 }
 
-func (config *ApiConfig) processFeed(feed *rss) {
+func (config *ApiConfig) processFeed(feed *rss, feedId uuid.UUID) error {
 	for _, c := range feed.Channels {
+		for _, item := range c.Items {
+			params, err := createPostParams(item, feedId)
+
+			if err != nil {
+				return err
+			}
+
+			post, err := config.DbConn.CreatePost(context.TODO(), params)
+			if err != nil {
+				if postgresErr, ok := err.(*pq.Error); ok {
+					if postgresErr.Code == "23505" {
+						log.Printf("Post already exists: %v", item.Title)
+					} else {
+						return err
+					}
+				}
+			} else {
+				log.Printf("Created post: %v", post.Title)
+			}
+		}
+
 		log.Printf("Processed feed: %v", c.Title)
 	}
+
+	return nil
 }
 
 func (config *ApiConfig) FetchLoop() {
@@ -120,7 +182,7 @@ func (config *ApiConfig) FetchLoop() {
 					log.Printf("Error: failed to retrieve items from feed %s: %v", url, err)
 					return
 				}
-				config.processFeed(rss)
+				config.processFeed(rss, id)
 			}(feed.Url, feed.ID)
 		}
 		log.Printf("Waiting for fetching to end...")
