@@ -14,17 +14,6 @@ import (
 )
 
 const createPost = `-- name: CreatePost :one
-/*
-    id UUID PRIMARY KEY,
-    created_at TIMESTAMP NOT NULL,
-    updated_at TIMESTAMP NOT NULL,
-    title TEXT NOT NULL,
-    url VARCHAR(150) NOT NULL, -- is this enough?
-    description VARCHAR(250),
-    published_at TIMESTAMP,
-    feed_id UUID,
-    UNIQUE(url)
-*/
 INSERT INTO posts (id, created_at, updated_at, title, url, description, published_at, feed_id)
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 RETURNING id, created_at, updated_at, title, url, description, published_at, feed_id
@@ -38,7 +27,7 @@ type CreatePostParams struct {
 	Url         string
 	Description sql.NullString
 	PublishedAt sql.NullTime
-	FeedID      uuid.NullUUID
+	FeedID      uuid.UUID
 }
 
 func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, error) {
@@ -68,7 +57,9 @@ func (q *Queries) CreatePost(ctx context.Context, arg CreatePostParams) (Post, e
 
 const getPostsByUser = `-- name: GetPostsByUser :many
 SELECT
-    p.id, p.created_at, p.updated_at, title, p.url, description, published_at, p.feed_id, fd.id, fd.created_at, fd.updated_at, name, fd.url, fd.user_id, last_fetched_at, fw.id, fw.created_at, fw.updated_at, fw.feed_id, fw.user_id
+    p.id, p.created_at, p.updated_at, p.title, p.url, p.description, p.published_at, p.feed_id,
+    FD.name as feed_name,
+    FD.url as feed_url
 FROM
     posts P
     INNER JOIN feeds FD ON P.feed_id = FD.id
@@ -77,33 +68,30 @@ WHERE
     FW.user_id = $1
 ORDER BY
     published_at DESC
+LIMIT
+    $2
 `
 
-type GetPostsByUserRow struct {
-	ID            uuid.UUID
-	CreatedAt     time.Time
-	UpdatedAt     time.Time
-	Title         string
-	Url           string
-	Description   sql.NullString
-	PublishedAt   sql.NullTime
-	FeedID        uuid.NullUUID
-	ID_2          uuid.UUID
-	CreatedAt_2   time.Time
-	UpdatedAt_2   time.Time
-	Name          string
-	Url_2         string
-	UserID        uuid.UUID
-	LastFetchedAt sql.NullTime
-	ID_3          uuid.UUID
-	CreatedAt_3   time.Time
-	UpdatedAt_3   time.Time
-	FeedID_2      uuid.UUID
-	UserID_2      uuid.UUID
+type GetPostsByUserParams struct {
+	UserID uuid.UUID
+	Limit  int32
 }
 
-func (q *Queries) GetPostsByUser(ctx context.Context, userID uuid.UUID) ([]GetPostsByUserRow, error) {
-	rows, err := q.db.QueryContext(ctx, getPostsByUser, userID)
+type GetPostsByUserRow struct {
+	ID          uuid.UUID
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Title       string
+	Url         string
+	Description sql.NullString
+	PublishedAt sql.NullTime
+	FeedID      uuid.UUID
+	FeedName    string
+	FeedUrl     string
+}
+
+func (q *Queries) GetPostsByUser(ctx context.Context, arg GetPostsByUserParams) ([]GetPostsByUserRow, error) {
+	rows, err := q.db.QueryContext(ctx, getPostsByUser, arg.UserID, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -120,18 +108,8 @@ func (q *Queries) GetPostsByUser(ctx context.Context, userID uuid.UUID) ([]GetPo
 			&i.Description,
 			&i.PublishedAt,
 			&i.FeedID,
-			&i.ID_2,
-			&i.CreatedAt_2,
-			&i.UpdatedAt_2,
-			&i.Name,
-			&i.Url_2,
-			&i.UserID,
-			&i.LastFetchedAt,
-			&i.ID_3,
-			&i.CreatedAt_3,
-			&i.UpdatedAt_3,
-			&i.FeedID_2,
-			&i.UserID_2,
+			&i.FeedName,
+			&i.FeedUrl,
 		); err != nil {
 			return nil, err
 		}

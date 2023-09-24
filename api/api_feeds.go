@@ -48,6 +48,19 @@ type feedList struct {
 	Feeds []feedResponse `json:"feeds"`
 }
 
+type postResponse struct {
+	Id          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Title       string    `json:"title"`
+	Url         string    `json:"url"`
+	Description string    `json:"description"`
+	PublishedAt time.Time `json:"published_at"`
+	FeedID      uuid.UUID `json:"feed_id"`
+	FeedName    string    `json:"feed_name"`
+	FeedUrl     string    `json:"feed_url"`
+}
+
 func mapFeedResponse(feed database.Feed) feedResponse {
 	return feedResponse{
 		Id:            feed.ID,
@@ -75,6 +88,15 @@ func createNewFeedResponse(feed database.Feed, follow database.Follow) newFeedRe
 		Feed:   mapFeedResponse(feed),
 		Follow: mapFollowResponse(follow),
 	}
+}
+
+func getPostByUserParams(userId uuid.UUID) database.GetPostsByUserParams {
+	params := database.GetPostsByUserParams{
+		UserID: userId,
+		Limit:  5,
+	}
+
+	return params
 }
 
 func createFollowParams(userId uuid.UUID, feedId uuid.UUID) (database.CreateFollowParams, error) {
@@ -275,5 +297,38 @@ func (config *ApiConfig) GetFollows(w http.ResponseWriter, r *http.Request, user
 	}
 
 	validResponse(w, http.StatusOK, returnedFollows)
+	return
+}
+
+// GET /api/posts
+func (config *ApiConfig) GetPostsForUser(w http.ResponseWriter, r *http.Request, user database.User) {
+	var returnedPosts []postResponse
+
+	w.Header().Set("Content-Type", "application/json")
+
+	params := getPostByUserParams(user.ID)
+	posts, err := config.DbConn.GetPostsByUser(context.TODO(), params)
+
+	if err != nil {
+		errorResponse(w, http.StatusInternalServerError, "Error retrieving posts")
+		return
+	}
+
+	for _, post := range posts {
+		returnedPosts = append(returnedPosts, postResponse{
+			Id:          post.ID,
+			CreatedAt:   post.CreatedAt,
+			UpdatedAt:   post.UpdatedAt,
+			Title:       post.Title,
+			Url:         post.Url,
+			Description: post.Description.String,
+			PublishedAt: post.PublishedAt.Time,
+			FeedID:      post.FeedID,
+			FeedName:    post.FeedName,
+			FeedUrl:     post.FeedUrl,
+		})
+	}
+
+	validResponse(w, http.StatusOK, returnedPosts)
 	return
 }

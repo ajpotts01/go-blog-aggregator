@@ -7,7 +7,7 @@ CREATE TABLE posts(
     url VARCHAR(150) NOT NULL, -- is this enough?
     description VARCHAR(250),
     published_at TIMESTAMP,
-    feed_id UUID,
+    feed_id UUID NOT NULL,
     UNIQUE(url)
 );
 
